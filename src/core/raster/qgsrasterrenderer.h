@@ -113,6 +113,15 @@ class CORE_EXPORT QgsRasterRenderer : public QgsRasterInterface
     //! Sets origin of min/max values
     void setMinMaxOrigin( const QgsRasterMinMaxOrigin &origin ) { mMinMaxOrigin = origin; }
 
+    /*! Used from subclasses to create SLD Rule elements following SLD v1.0 specs
+     * \since QGIS 3.6  */
+    virtual void toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props = QgsStringMap() ) const
+    {
+      Q_UNUSED( doc );
+      Q_UNUSED( element );
+      Q_UNUSED( props );
+    }
+
   protected:
 
     //! Write upper class info into rasterrenderer element (called by writeXml method of subclasses)

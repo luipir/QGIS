@@ -19,6 +19,8 @@
 #include "qgscontrastenhancement.h"
 #include "qgsrastertransparency.h"
 #include "qgsrasterviewport.h"
+#include "qgssymbollayerutils.h"
+
 #include <QDomDocument>
 #include <QDomElement>
 #include <QImage>
@@ -418,4 +420,20 @@ QList<int> QgsMultiBandColorRenderer::usesBands() const
     bandList << mBlueBand;
   }
   return bandList;
+}
+
+void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const
+{
+  QgsStringMap newProps = props;
+
+  QDomElement ruleElem = doc.createElement( QStringLiteral( "se:Rule" ) );
+  element.appendChild( ruleElem );
+
+  QDomElement nameElem = doc.createElement( QStringLiteral( "se:Name" ) );
+  nameElem.appendChild( doc.createTextNode( QStringLiteral( "Single symbol" ) ) );
+  ruleElem.appendChild( nameElem );
+
+  QgsSymbolLayerUtils::applyScaleDependency( doc, ruleElem, newProps );
+
+  if ( mSymbol ) mSymbol->toSld( doc, ruleElem, newProps );
 }

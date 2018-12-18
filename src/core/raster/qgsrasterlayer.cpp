@@ -49,6 +49,7 @@ email                : tim at linfiniti.com
 #include "qgssinglebandgrayrenderer.h"
 #include "qgssinglebandpseudocolorrenderer.h"
 #include "qgssettings.h"
+#include "qgssymbollayerutils.h"
 
 #include <cmath>
 #include <cstdio>
@@ -1281,6 +1282,58 @@ QDateTime QgsRasterLayer::timestamp() const
 {
   return mDataProvider->timestamp();
 }
+
+
+bool QgsRasterLayer::writeSld( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsStringMap &props ) const
+{
+  Q_UNUSED( errorMessage );
+
+  QgsStringMap localProps = QgsStringMap( props );
+  if ( hasScaleBasedVisibility() )
+  {
+    // TODO: QgsSymbolLayerUtils::mergeScaleDependencies generate SE only and not SLD1.0
+    QgsSymbolLayerUtils::mergeScaleDependencies( maximumScale(), minimumScale(), localProps );
+  }
+
+  if ( isSpatial() ) // TODO: does it make sense this control?
+  {
+    // store contraints
+    QDomElement contraintElem = doc.createElement( QStringLiteral( "LayerFeatureConstraints" ) );
+    node.appendChild( contraintElem );
+
+    QDomElement featureTypeConstraintElem = doc.createElement( QStringLiteral( "FeatureTypeConstraint" ) );
+    contraintElem.appendChild( featureTypeConstraintElem );
+
+    QDomElement userStyleElem = doc.createElement( QStringLiteral( "UserStyle" ) );
+    node.appendChild( userStyleElem );
+
+    QDomElement nameElem = doc.createElement( QStringLiteral( "Name" ) );
+    nameElem.appendChild( doc.createTextNode( name() ) );
+    userStyleElem.appendChild( nameElem );
+
+    QDomElement descriptionElem = doc.createElement( QStringLiteral( "Description" ) );
+    descriptionElem.appendChild( doc.createTextNode( abstract() ) );
+    userStyleElem.appendChild( descriptionElem );
+
+    QDomElement titleElem = doc.createElement( QStringLiteral( "Title" ) );
+    titleElem.appendChild( doc.createTextNode( title() ) );
+    userStyleElem.appendChild( titleElem );
+
+    QDomElement featureTypeStyleElem = doc.createElement( QStringLiteral( "FeatureTypeStyle" ) );
+    userStyleElem.appendChild( featureTypeStyleElem );
+
+    QDomElement typeStyleNameElem = doc.createElement( QStringLiteral( "Name" ) );
+    featureTypeStyleElem.appendChild( typeStyleNameElem );
+
+    QDomElement typeStyleRuleElem = doc.createElement( QStringLiteral( "Rule" ) );
+    featureTypeStyleElem.appendChild( typeStyleRuleElem );
+
+    QgsRasterRenderer *renderer = mPipe.renderer();
+    renderer->toSld( doc, typeStyleRuleElem, localProps );
+  }
+  return true;
+}
+
 
 void QgsRasterLayer::setRenderer( QgsRasterRenderer *renderer )
 {

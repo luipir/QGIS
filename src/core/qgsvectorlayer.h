@@ -2131,6 +2131,14 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer, public QgsExpressionConte
      */
     bool startEditing();
 
+    /**
+     * Export the properties of this layer as SLD style in a QDomDocument
+     * \param doc the target QDomDocument
+     * \param errorMsg this QString will be initialized on error
+     * during the execution of writeSymbology
+     */
+    void exportSldStyle( QDomDocument &doc, QString &errorMsg ) const override;
+
   signals:
 
     /**
