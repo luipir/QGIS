@@ -19,7 +19,6 @@
 #include "qgscontrastenhancement.h"
 #include "qgsrastertransparency.h"
 #include "qgsrasterviewport.h"
-#include "qgssymbollayerutils.h"
 
 #include <QDomDocument>
 #include <QDomElement>
@@ -426,14 +425,55 @@ void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, 
 {
   QgsStringMap newProps = props;
 
-  QDomElement ruleElem = doc.createElement( QStringLiteral( "se:Rule" ) );
-  element.appendChild( ruleElem );
+  QDomElement rasterSymolizerElem = doc.createElement( QStringLiteral( "RasterSymbolizer" ) );
+  element.appendChild( rasterSymolizerElem );
 
-  QDomElement nameElem = doc.createElement( QStringLiteral( "se:Name" ) );
-  nameElem.appendChild( doc.createTextNode( QStringLiteral( "Single symbol" ) ) );
-  ruleElem.appendChild( nameElem );
+  QDomElement geometryElem = doc.createElement( QStringLiteral( "Geometry" ) );
+  QDomElement property = doc.createElement( QStringLiteral( "ogc:PropertyName" ) );
+  property.appendChild( doc.createTextNode( QStringLiteral("Grid") ) );
+  geometryElem.appendChild( property );
+  rasterSymolizerElem.appendChild( geometryElem );
 
-  QgsSymbolLayerUtils::applyScaleDependency( doc, ruleElem, newProps );
+  QDomElement opacityElem = doc.createElement( QStringLiteral( "Opacity" ) );
+  opacityElem.appendChild( doc.createTextNode( QString::number( opacity() ) ) );
+  rasterSymolizerElem.appendChild( opacityElem );
 
-  if ( mSymbol ) mSymbol->toSld( doc, ruleElem, newProps );
+  // add Channel Selection tags
+  QDomElement channelSelectionElem = doc.createElement( QStringLiteral( "ChannelSelection" ) );
+  rasterSymolizerElem.appendChild( channelSelectionElem );
+
+  // for each mapped band
+  QStringList tags;
+  tags << QStringLiteral( "RedChannel" ) << QStringLiteral( "GreenChannel" ) << QStringLiteral( "BlueChannel" );
+
+  QList<QgsContrastEnhancement*> contrastEnhancements;
+  contrastEnhancements.append( mRedContrastEnhancement );
+  contrastEnhancements.append( mGreenContrastEnhancement );
+  contrastEnhancements.append( mBlueContrastEnhancement );
+
+  QList<int> bands = usesBands();
+  QList<int>::const_iterator bandIt = bands.constBegin();
+  for ( int tagCounter = 0 ; bandIt != bands.constEnd(); ++bandIt, ++tagCounter)
+  {
+    if ( *bandIt < 0)
+      continue;
+
+    QDomElement channelElem = doc.createElement( tags[ tagCounter ] );
+    channelSelectionElem.appendChild( channelElem );
+
+    // set band
+    QDomElement sourceChannelNameElem = doc.createElement( QStringLiteral( "SourceChannelName" ) );
+    sourceChannelNameElem.appendChild( doc.createTextNode( QString::number( *bandIt ) ) );
+    channelElem.appendChild( sourceChannelNameElem );
+
+    // set ContrastEnhancement for each band
+    // NO ContrastEnhancement parameter for the entire bands is managed e.g.
+    // because min/max values can vary depending on band.
+    if ( contrastEnhancements[ tagCounter ] )
+    {
+      QDomElement contrastEnhancementElem = doc.createElement( QStringLiteral( "ContrastEnhancement" ) );
+      contrastEnhancements[ tagCounter ]->toSld( doc, contrastEnhancementElem );
+      channelElem.appendChild( contrastEnhancementElem );
+    }
+  }
 }

@@ -377,6 +377,54 @@ void QgsContrastEnhancement::readXml( const QDomElement &elem )
   }
 }
 
+void QgsContrastEnhancement::toSld( QDomDocument &doc, QDomElement &element ) const
+{
+  if ( doc.isNull() || element.isNull() )
+    return;
+
+  QString algName;
+  switch( contrastEnhancementAlgorithm() )
+  {
+    case StretchToMinimumMaximum:
+      algName = QStringLiteral( "StretchToMinimumMaximum" );
+      break;
+    /* TODO: check if ClipToZero => StretchAndClipToMinimumMaximum
+     * because value outside min/max ar considered as NoData instead of 0 */
+    case StretchAndClipToMinimumMaximum:
+      algName = QStringLiteral( "ClipToZero" );
+      break;
+    case ClipToMinimumMaximum:
+      algName = QStringLiteral( "ClipToMinimumMaximum" );
+      break;
+    case NoEnhancement:
+      return;
+    default:
+      QgsDebugMsgLevel( QStringLiteral( "No SLD1.0 convertion yet for stretch algorithm %1" ).arg( contrastEnhancementAlgorithmString( contrastEnhancementAlgorithm() ) ), 4 );
+      return;
+  }
+
+  // Only <Normalize> is supported
+  // minValue and maxValue are that values as set depending on "Min /Max value settings"
+  // parameters
+  QDomElement normalizeElem = doc.createElement( QStringLiteral( "Normalize" ) );
+  element.appendChild( normalizeElem );
+
+  QDomElement vendorOptionAlgorithmElem = doc.createElement( QStringLiteral( "VendorOption" ) );
+  vendorOptionAlgorithmElem.setAttribute( QStringLiteral( "name" ), QStringLiteral( "algorithm" ) );
+  vendorOptionAlgorithmElem.appendChild( doc.createTextNode( algName ) );
+  normalizeElem.appendChild( vendorOptionAlgorithmElem );
+
+  QDomElement vendorOptionMinValueElem = doc.createElement( QStringLiteral( "VendorOption" ) );
+  vendorOptionMinValueElem.setAttribute( QStringLiteral( "name" ), QStringLiteral( "minValue" ) );
+  vendorOptionMinValueElem.appendChild( doc.createTextNode( QString::number( minimumValue() ) ) );
+  normalizeElem.appendChild( vendorOptionMinValueElem );
+
+  QDomElement vendorOptionMaxValueElem = doc.createElement( QStringLiteral( "VendorOption" ) );
+  vendorOptionMaxValueElem.setAttribute( QStringLiteral( "name" ), QStringLiteral( "maxValue" ) );
+  vendorOptionMaxValueElem.appendChild( doc.createTextNode( QString::number( maximumValue() ) ) );
+  normalizeElem.appendChild( vendorOptionMaxValueElem );
+}
+
 QString QgsContrastEnhancement::contrastEnhancementAlgorithmString( ContrastEnhancementAlgorithm algorithm )
 {
   switch ( algorithm )
