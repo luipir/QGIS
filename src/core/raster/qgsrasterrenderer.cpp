@@ -154,3 +154,51 @@ void QgsRasterRenderer::copyCommonProperties( const QgsRasterRenderer *other, bo
   if ( copyMinMaxOrigin )
     setMinMaxOrigin( other->minMaxOrigin() );
 }
+
+void QgsRasterRenderer::toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const
+{
+  QgsStringMap newProps = props;
+
+  QDomElement rasterSymolizerElem = doc.createElement( QStringLiteral( "RasterSymbolizer" ) );
+  element.appendChild( rasterSymolizerElem );
+
+  QDomElement geometryElem = doc.createElement( QStringLiteral( "Geometry" ) );
+  QDomElement property = doc.createElement( QStringLiteral( "ogc:PropertyName" ) );
+  property.appendChild( doc.createTextNode( QStringLiteral("Grid") ) );
+  geometryElem.appendChild( property );
+  rasterSymolizerElem.appendChild( geometryElem );
+
+  QDomElement opacityElem = doc.createElement( QStringLiteral( "Opacity" ) );
+  opacityElem.appendChild( doc.createTextNode( QString::number( opacity() ) ) );
+  rasterSymolizerElem.appendChild( opacityElem );
+
+  // add SLD1.0 ContrastEnhancement GammaValue = QGIS Contrast
+  // SLD1.0 does only define 1 as neutral/center double value but does not define range.
+  // because https://en.wikipedia.org/wiki/Gamma_correction assumed gamma is >0.
+  // whilst QGIS has a -100/100 values centered in 0 => QGIS contrast value will be scaled in the
+  // following way:
+  // [-100,0] => [0,1] and [0,100] => [1,100]
+  // an alternative could be scale [-100,100] => (0,2]
+  if ( newProps.contains( QStringLiteral( "contrast" ) ) )
+  {
+    double gamma;
+    int contrast = newProps[ QStringLiteral( "contrast" ) ].toInt();
+    double percentage = (contrast - (-100.0))/(100.0 - (-100.0));
+    if ( percentage <= 0.5)
+    {
+      // stretch % to [0-1]
+      gamma = percentage / 0.5;
+    }
+    else
+    {
+      gamma = contrast;
+    }
+
+    QDomElement globalContrastEnhancementElem = doc.createElement( QStringLiteral( "ContrastEnhancement" ) );
+    rasterSymolizerElem.appendChild( globalContrastEnhancementElem );
+
+    QDomElement gammaValueElem = doc.createElement( QStringLiteral( "GammaValue" ) );
+    gammaValueElem.appendChild( doc.createTextNode( QString::number( gamma ) ) );
+    globalContrastEnhancementElem.appendChild( gammaValueElem );
+  }
+}

@@ -425,22 +425,20 @@ void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, 
 {
   QgsStringMap newProps = props;
 
-  QDomElement rasterSymolizerElem = doc.createElement( QStringLiteral( "RasterSymbolizer" ) );
-  element.appendChild( rasterSymolizerElem );
+  // create base structure
+  QgsRasterRenderer::toSld( doc, element, props );
 
-  QDomElement geometryElem = doc.createElement( QStringLiteral( "Geometry" ) );
-  QDomElement property = doc.createElement( QStringLiteral( "ogc:PropertyName" ) );
-  property.appendChild( doc.createTextNode( QStringLiteral("Grid") ) );
-  geometryElem.appendChild( property );
-  rasterSymolizerElem.appendChild( geometryElem );
+  // look for RasterSymbolizer tag
+  QDomNodeList elements = element.elementsByTagNameNS( QStringLiteral( "sld" ), QStringLiteral( "RasterSymbolizer" ));
+  if ( elements.size() == 0)
+    return;
 
-  QDomElement opacityElem = doc.createElement( QStringLiteral( "Opacity" ) );
-  opacityElem.appendChild( doc.createTextNode( QString::number( opacity() ) ) );
-  rasterSymolizerElem.appendChild( opacityElem );
+  // there SHOULD be only one
+  QDomElement rasterSymbolizerElem = elements.at(0).toElement();
 
   // add Channel Selection tags
   QDomElement channelSelectionElem = doc.createElement( QStringLiteral( "ChannelSelection" ) );
-  rasterSymolizerElem.appendChild( channelSelectionElem );
+  rasterSymbolizerElem.appendChild( channelSelectionElem );
 
   // for each mapped band
   QStringList tags;
@@ -475,35 +473,5 @@ void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, 
       contrastEnhancements[ tagCounter ]->toSld( doc, contrastEnhancementElem );
       channelElem.appendChild( contrastEnhancementElem );
     }
-  }
-
-  // add SLD1.0 ContrastEnhancement GammaValue = QGIS Contrast
-  // SLD1.0 does only define 1 as neutral/center double value but does not define range.
-  // because https://en.wikipedia.org/wiki/Gamma_correction assumed gamma is >0.
-  // whilst QGIS has a -100/100 values centered in 0 => QGIS contrast value will be scaled in the
-  // following way:
-  // [-100,0] => [0,1] and [0,100] => [1,100]
-  // an alternative could be scale [-100,100] => (0,2]
-  if ( newProps.contains( QStringLiteral( "contrast" ) ) )
-  {
-    double gamma;
-    int contrast = newProps[ QStringLiteral( "contrast" ) ].toInt();
-    double percentage = (contrast - (-100.0))/(100.0 - (-100.0));
-    if ( percentage <= 0.5)
-    {
-      // stretch % to [0-1]
-      gamma = percentage / 0.5;
-    }
-    else
-    {
-      gamma = contrast;
-    }
-
-    QDomElement globalContrastEnhancementElem = doc.createElement( QStringLiteral( "ContrastEnhancement" ) );
-    rasterSymolizerElem.appendChild( globalContrastEnhancementElem );
-
-    QDomElement gammaValueElem = doc.createElement( QStringLiteral( "GammaValue" ) );
-    gammaValueElem.appendChild( doc.createTextNode( QString::number( gamma ) ) );
-    globalContrastEnhancementElem.appendChild( gammaValueElem );
   }
 }
