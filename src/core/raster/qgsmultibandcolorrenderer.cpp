@@ -476,4 +476,34 @@ void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, 
       channelElem.appendChild( contrastEnhancementElem );
     }
   }
+
+  // add SLD1.0 ContrastEnhancement GammaValue = QGIS Contrast
+  // SLD1.0 does only define 1 as neutral/center double value but does not define range.
+  // because https://en.wikipedia.org/wiki/Gamma_correction assumed gamma is >0.
+  // whilst QGIS has a -100/100 values centered in 0 => QGIS contrast value will be scaled in the
+  // following way:
+  // [-100,0] => [0,1] and [0,100] => [1,100]
+  // an alternative could be scale [-100,100] => (0,2]
+  if ( newProps.contains( QStringLiteral( "contrast" ) ) )
+  {
+    double gamma;
+    int contrast = newProps[ QStringLiteral( "contrast" ) ].toInt();
+    double percentage = (contrast - (-100.0))/(100.0 - (-100.0));
+    if ( percentage <= 0.5)
+    {
+      // stretch % to [0-1]
+      gamma = percentage / 0.5;
+    }
+    else
+    {
+      gamma = contrast;
+    }
+
+    QDomElement globalContrastEnhancementElem = doc.createElement( QStringLiteral( "ContrastEnhancement" ) );
+    rasterSymolizerElem.appendChild( globalContrastEnhancementElem );
+
+    QDomElement gammaValueElem = doc.createElement( QStringLiteral( "GammaValue" ) );
+    gammaValueElem.appendChild( doc.createTextNode( QString::number( gamma ) ) );
+    globalContrastEnhancementElem.appendChild( gammaValueElem );
+  }
 }

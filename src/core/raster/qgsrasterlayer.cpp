@@ -1328,6 +1328,10 @@ bool QgsRasterLayer::writeSld( QDomNode &node, QDomDocument &doc, QString &error
     QDomElement typeStyleRuleElem = doc.createElement( QStringLiteral( "Rule" ) );
     featureTypeStyleElem.appendChild( typeStyleRuleElem );
 
+    // add properties not available in the renderer but available only at rasterLayaer level
+    localProps[ QStringLiteral( "brightness" ) ] = QString::number( brightnessFilter()->brightness() );
+    localProps[ QStringLiteral( "contrast" ) ] = QString::number( brightnessFilter()->contrast() );
+
     QgsRasterRenderer *renderer = mPipe.renderer();
     renderer->toSld( doc, typeStyleRuleElem, localProps );
   }

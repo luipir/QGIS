@@ -1437,8 +1437,8 @@ void QgsMapLayer::exportSldStyle( QDomDocument &doc, QString &errorMsg ) const
   QgsStringMap props;
   if ( hasScaleBasedVisibility() )
   {
-    props[ QStringLiteral( "scaleMinDenom" )] = QString::number( mMinScale );
-    props[ QStringLiteral( "scaleMaxDenom" )] = QString::number( mMaxScale );
+    props[ QStringLiteral( "scaleMinDenom" ) ] = QString::number( mMinScale );
+    props[ QStringLiteral( "scaleMaxDenom" ) ] = QString::number( mMaxScale );
   }
 
   if (vlayer)
