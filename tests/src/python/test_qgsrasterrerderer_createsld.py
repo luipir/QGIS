@@ -1,0 +1,133 @@
+# -*- coding: utf-8 -*-
+"""
+***************************************************************************
+    test_qgsrasterrenderer_createsld.py
+    ---------------------
+    Date                 : December 2018
+    Copyright            : (C) 2018 by Luigi Pirelli
+    Email                : luipir at gmail dot com
+***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *less
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 2 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************
+"""
+
+__author__ = 'Luigi Pirelli'
+__date__ = 'December 2018'
+__copyright__ = '(C) 2018, Luigi Pirelli'
+# This will get replaced with a git SHA1 when you do a git archive
+__revision__ = '$Format:%H$'
+
+import qgis  # NOQA
+
+import os
+
+from qgis.PyQt.QtCore import (
+    Qt,
+    QDir,
+    QFile,
+    QIODevice,
+    QPointF,
+    QSizeF,
+    QFileInfo,
+)
+from qgis.PyQt.QtXml import QDomDocument
+from qgis.PyQt.QtGui import QColor, QFont
+
+from qgis.core import (
+    QgsRasterLayer,
+    QgsMultiBandColorRenderer
+)
+from qgis.testing import start_app, unittest
+from utilities import unitTestDataPath
+
+# Convenience instances in case you may need them
+# not used in this test
+start_app()
+TEST_DATA_DIR = unitTestDataPath()
+
+
+class TestQgsRasterRendererCreateSld(unittest.TestCase):
+
+    """
+     This class tests the creation of SLD from QGis raster layers
+    """
+
+    @classmethod
+    def setUpClass(self):
+        pass
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def __init__(self, methodName):
+        """Run once on class initialization."""
+        unittest.TestCase.__init__(self, methodName)
+        myPath = os.path.join(TEST_DATA_DIR, 'rgb256x256.png')
+        rasterFileInfo = QFileInfo(myPath)
+        self.raster_layer = QgsRasterLayer(rasterFileInfo.filePath(),
+                                           rasterFileInfo.completeBaseName())
+
+    def testMultiBandColorRenderer(self):
+        rasterRenderer = QgsMultiBandColorRenderer(
+            self.raster_layer.dataProvider(), 3, 1, 2)
+        dom, root = self.rendererToSld(rasterRenderer)
+        self.assertOpacity(root, '1')
+        self.assertChannelBand(root, 'sld:RedChannel', '3')
+        self.assertChannelBand(root, 'sld:GreenChannel', '1')
+        self.assertChannelBand(root, 'sld:BlueChannel', '2')
+        # check gamma properties from [-100:0] streched to [0:1]
+        #  and (0:100] stretche dto (1:100]
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '-100'})
+        self.assertGamma(root, '0')
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '-50'})
+        self.assertGamma(root, '0.5')
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '0'})
+        self.assertGamma(root, '1')
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '1'})
+        self.assertGamma(root, '1')
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '100'})
+        self.assertGamma(root, '100')
+        # input contrast are always integer, btw the value is managed also if it's double
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '1.1'})
+        self.assertGamma(root, '1.1')
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '1.6'})
+        self.assertGamma(root, '1.6')
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '-50.5'})
+        self.assertGamma(root, '0.495')
+        dom, root = self.rendererToSld(rasterRenderer, {'contrast': '-0.1'})
+        self.assertGamma(root, '0.999')
+
+    def assertGamma(self, root, expectedValue, index=0):
+        enhancement = root.elementsByTagName('sld:ContrastEnhancement').item(index)
+        gamma = enhancement.firstChildElement( 'sld:GammaValue' )
+        self.assertEqual(expectedValue, gamma.firstChild().nodeValue())
+
+    def assertOpacity(self, root, expectedValue, index=0):
+        opacity = root.elementsByTagName('sld:Opacity').item(index)
+        self.assertEqual(expectedValue, opacity.firstChild().nodeValue())
+
+    def assertChannelBand(self, root, bandTag, expectedValue, index=0):
+        channelSelection = root.elementsByTagName('sld:ChannelSelection').item(index)
+        self.assertIsNotNone(channelSelection)
+        band = channelSelection.firstChildElement( bandTag )
+        sourceChannelName = band.firstChildElement('sld:SourceChannelName')
+        self.assertEqual(expectedValue, sourceChannelName.firstChild().nodeValue())
+
+    def rendererToSld(self, renderer, properties={}):
+        dom = QDomDocument()
+        root = dom.createElement("FakeRoot")
+        dom.appendChild(root)
+        renderer.toSld(dom, root, properties)
+        return dom, root
+
+
+if __name__ == '__main__':
+    unittest.main()
