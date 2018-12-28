@@ -1298,34 +1298,34 @@ bool QgsRasterLayer::writeSld( QDomNode &node, QDomDocument &doc, QString &error
   if ( isSpatial() ) // TODO: does it make sense this control?
   {
     // store contraints
-    QDomElement contraintElem = doc.createElement( QStringLiteral( "LayerFeatureConstraints" ) );
+    QDomElement contraintElem = doc.createElement( QStringLiteral( "sld:LayerFeatureConstraints" ) );
     node.appendChild( contraintElem );
 
-    QDomElement featureTypeConstraintElem = doc.createElement( QStringLiteral( "FeatureTypeConstraint" ) );
+    QDomElement featureTypeConstraintElem = doc.createElement( QStringLiteral( "sld:FeatureTypeConstraint" ) );
     contraintElem.appendChild( featureTypeConstraintElem );
 
-    QDomElement userStyleElem = doc.createElement( QStringLiteral( "UserStyle" ) );
+    QDomElement userStyleElem = doc.createElement( QStringLiteral( "sld:UserStyle" ) );
     node.appendChild( userStyleElem );
 
-    QDomElement nameElem = doc.createElement( QStringLiteral( "Name" ) );
+    QDomElement nameElem = doc.createElement( QStringLiteral( "sld:Name" ) );
     nameElem.appendChild( doc.createTextNode( name() ) );
     userStyleElem.appendChild( nameElem );
 
-    QDomElement descriptionElem = doc.createElement( QStringLiteral( "Description" ) );
+    QDomElement descriptionElem = doc.createElement( QStringLiteral( "sld:Description" ) );
     descriptionElem.appendChild( doc.createTextNode( abstract() ) );
     userStyleElem.appendChild( descriptionElem );
 
-    QDomElement titleElem = doc.createElement( QStringLiteral( "Title" ) );
+    QDomElement titleElem = doc.createElement( QStringLiteral( "sld:Title" ) );
     titleElem.appendChild( doc.createTextNode( title() ) );
     userStyleElem.appendChild( titleElem );
 
-    QDomElement featureTypeStyleElem = doc.createElement( QStringLiteral( "FeatureTypeStyle" ) );
+    QDomElement featureTypeStyleElem = doc.createElement( QStringLiteral( "sld:FeatureTypeStyle" ) );
     userStyleElem.appendChild( featureTypeStyleElem );
 
-    QDomElement typeStyleNameElem = doc.createElement( QStringLiteral( "Name" ) );
+    QDomElement typeStyleNameElem = doc.createElement( QStringLiteral( "sld:Name" ) );
     featureTypeStyleElem.appendChild( typeStyleNameElem );
 
-    QDomElement typeStyleRuleElem = doc.createElement( QStringLiteral( "Rule" ) );
+    QDomElement typeStyleRuleElem = doc.createElement( QStringLiteral( "sld:Rule" ) );
     featureTypeStyleElem.appendChild( typeStyleRuleElem );
 
     // add properties not available in the renderer but available only at rasterLayaer level

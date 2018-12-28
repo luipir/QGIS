@@ -429,7 +429,7 @@ void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, 
   QgsRasterRenderer::toSld( doc, element, props );
 
   // look for RasterSymbolizer tag
-  QDomNodeList elements = element.elementsByTagNameNS( QStringLiteral( "sld" ), QStringLiteral( "RasterSymbolizer" ));
+  QDomNodeList elements = element.elementsByTagName( QStringLiteral( "sld:RasterSymbolizer" ) );
   if ( elements.size() == 0)
     return;
 
@@ -437,12 +437,12 @@ void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, 
   QDomElement rasterSymbolizerElem = elements.at(0).toElement();
 
   // add Channel Selection tags
-  QDomElement channelSelectionElem = doc.createElement( QStringLiteral( "ChannelSelection" ) );
+  QDomElement channelSelectionElem = doc.createElement( QStringLiteral( "sld:ChannelSelection" ) );
   rasterSymbolizerElem.appendChild( channelSelectionElem );
 
   // for each mapped band
   QStringList tags;
-  tags << QStringLiteral( "RedChannel" ) << QStringLiteral( "GreenChannel" ) << QStringLiteral( "BlueChannel" );
+  tags << QStringLiteral( "sld:RedChannel" ) << QStringLiteral( "sld:GreenChannel" ) << QStringLiteral( "sld:BlueChannel" );
 
   QList<QgsContrastEnhancement*> contrastEnhancements;
   contrastEnhancements.append( mRedContrastEnhancement );
@@ -460,7 +460,7 @@ void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, 
     channelSelectionElem.appendChild( channelElem );
 
     // set band
-    QDomElement sourceChannelNameElem = doc.createElement( QStringLiteral( "SourceChannelName" ) );
+    QDomElement sourceChannelNameElem = doc.createElement( QStringLiteral( "sld:SourceChannelName" ) );
     sourceChannelNameElem.appendChild( doc.createTextNode( QString::number( *bandIt ) ) );
     channelElem.appendChild( sourceChannelNameElem );
 
@@ -469,7 +469,7 @@ void QgsMultiBandColorRenderer::toSld( QDomDocument &doc, QDomElement &element, 
     // because min/max values can vary depending on band.
     if ( contrastEnhancements[ tagCounter ] )
     {
-      QDomElement contrastEnhancementElem = doc.createElement( QStringLiteral( "ContrastEnhancement" ) );
+      QDomElement contrastEnhancementElem = doc.createElement( QStringLiteral( "sld:ContrastEnhancement" ) );
       contrastEnhancements[ tagCounter ]->toSld( doc, contrastEnhancementElem );
       channelElem.appendChild( contrastEnhancementElem );
     }
