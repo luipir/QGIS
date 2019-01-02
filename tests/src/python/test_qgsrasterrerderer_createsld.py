@@ -86,15 +86,10 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
                                                   limits=QgsRasterMinMaxOrigin.MinMax );
 
         dom, root = self.rendererToSld(self.raster_layer.renderer())
-        print(dom.toString())
         self.assertOpacity(root, '1')
         self.assertChannelBand(root, 'sld:RedChannel', '3')
         self.assertChannelBand(root, 'sld:GreenChannel', '1')
         self.assertChannelBand(root, 'sld:BlueChannel', '2')
-        # check ContrastEnhancement tags
-        self.assertContrastEnhancement(root, 'sld:RedChannel', 'StretchToMinimumMaximum', '51', '172')
-        self.assertContrastEnhancement(root, 'sld:GreenChannel', 'StretchToMinimumMaximum', '122', '130')
-        self.assertContrastEnhancement(root, 'sld:BlueChannel', 'StretchToMinimumMaximum', '133', '148')
         # check gamma properties from [-100:0] streched to [0:1]
         #  and (0:100] stretche dto (1:100]
         dom, root = self.rendererToSld(rasterRenderer, {'contrast': '-100'})
@@ -117,6 +112,41 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
         dom, root = self.rendererToSld(rasterRenderer, {'contrast': '-0.1'})
         self.assertGamma(root, '0.999')
 
+    def testStretchingAlgorithm(self):
+        rasterRenderer = QgsMultiBandColorRenderer(
+            self.raster_layer.dataProvider(), 3, 1, 2)
+        self.raster_layer.setRenderer(rasterRenderer)
+
+        # check StretchToMinimumMaximum stretching alg
+        self.raster_layer.setContrastEnhancement( algorithm=QgsContrastEnhancement.StretchToMinimumMaximum,
+                                                  limits=QgsRasterMinMaxOrigin.MinMax );
+        dom, root = self.rendererToSld(self.raster_layer.renderer())
+        self.assertContrastEnhancement(root, 'sld:RedChannel', 'StretchToMinimumMaximum', '51', '172')
+        self.assertContrastEnhancement(root, 'sld:GreenChannel', 'StretchToMinimumMaximum', '122', '130')
+        self.assertContrastEnhancement(root, 'sld:BlueChannel', 'StretchToMinimumMaximum', '133', '148')
+
+        # check StretchAndClipToMinimumMaximum stretching alg
+        self.raster_layer.setContrastEnhancement( algorithm=QgsContrastEnhancement.StretchAndClipToMinimumMaximum,
+                                                  limits=QgsRasterMinMaxOrigin.MinMax );
+        dom, root = self.rendererToSld(self.raster_layer.renderer())
+        self.assertContrastEnhancement(root, 'sld:RedChannel', 'ClipToZero', '51', '172')
+        self.assertContrastEnhancement(root, 'sld:GreenChannel', 'ClipToZero', '122', '130')
+        self.assertContrastEnhancement(root, 'sld:BlueChannel', 'ClipToZero', '133', '148')
+
+        # check ClipToMinimumMaximum stretching alg
+        self.raster_layer.setContrastEnhancement( algorithm=QgsContrastEnhancement.ClipToMinimumMaximum,
+                                                  limits=QgsRasterMinMaxOrigin.MinMax );
+        dom, root = self.rendererToSld(self.raster_layer.renderer())
+        self.assertContrastEnhancement(root, 'sld:RedChannel', 'ClipToMinimumMaximum', '51', '172')
+        self.assertContrastEnhancement(root, 'sld:GreenChannel', 'ClipToMinimumMaximum', '122', '130')
+        self.assertContrastEnhancement(root, 'sld:BlueChannel', 'ClipToMinimumMaximum', '133', '148')
+
+        # check NoEnhancement stretching alg
+        self.raster_layer.setContrastEnhancement( algorithm=QgsContrastEnhancement.NoEnhancement );
+        dom, root = self.rendererToSld(self.raster_layer.renderer())
+        self.assertContrastEnhancement(root, 'sld:RedChannel')
+        self.assertContrastEnhancement(root, 'sld:GreenChannel')
+        self.assertContrastEnhancement(root, 'sld:BlueChannel')
 
     def assertGamma(self, root, expectedValue, index=0):
         enhancement = root.elementsByTagName('sld:ContrastEnhancement').item(index)
@@ -127,10 +157,16 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
         opacity = root.elementsByTagName('sld:Opacity').item(index)
         self.assertEqual(expectedValue, opacity.firstChild().nodeValue())
 
-    def assertContrastEnhancement(self, root, bandTag, expectedAlg, expectedMin, expectedMax, index=0):
+    def assertContrastEnhancement(self, root, bandTag, expectedAlg=None, expectedMin=None, expectedMax=None, index=0):
         channelSelection = root.elementsByTagName('sld:ChannelSelection').item(index)
         self.assertIsNotNone(channelSelection)
         band = channelSelection.firstChildElement( bandTag )
+        # check if no enhancement alg is iset
+        if ( not expectedAlg ):
+            contrastEnhancementName = band.firstChildElement('sld:ContrastEnhancement')
+            self.assertEqual('', contrastEnhancementName.firstChild().nodeName())
+            return
+        # check if enhancement alg is set
         contrastEnhancementName = band.firstChildElement('sld:ContrastEnhancement')
         self.assertEqual('Normalize', contrastEnhancementName.firstChild().nodeName())
         normalize = contrastEnhancementName.firstChildElement( 'Normalize' )
