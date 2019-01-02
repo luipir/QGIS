@@ -40,7 +40,10 @@ from qgis.PyQt.QtGui import QColor, QFont
 
 from qgis.core import (
     QgsRasterLayer,
-    QgsMultiBandColorRenderer
+    QgsMultiBandColorRenderer,
+    QgsContrastEnhancement,
+    QgsRasterMinMaxOrigin,
+    Qgis,
 )
 from qgis.testing import start_app, unittest
 from utilities import unitTestDataPath
@@ -70,7 +73,7 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
     def __init__(self, methodName):
         """Run once on class initialization."""
         unittest.TestCase.__init__(self, methodName)
-        myPath = os.path.join(TEST_DATA_DIR, 'rgb256x256.png')
+        myPath = os.path.join(TEST_DATA_DIR, 'landsat.tif')
         rasterFileInfo = QFileInfo(myPath)
         self.raster_layer = QgsRasterLayer(rasterFileInfo.filePath(),
                                            rasterFileInfo.completeBaseName())
@@ -78,11 +81,20 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
     def testMultiBandColorRenderer(self):
         rasterRenderer = QgsMultiBandColorRenderer(
             self.raster_layer.dataProvider(), 3, 1, 2)
-        dom, root = self.rendererToSld(rasterRenderer)
+        self.raster_layer.setRenderer(rasterRenderer)
+        self.raster_layer.setContrastEnhancement( algorithm=QgsContrastEnhancement.StretchToMinimumMaximum,
+                                                  limits=QgsRasterMinMaxOrigin.MinMax );
+
+        dom, root = self.rendererToSld(self.raster_layer.renderer())
+        print(dom.toString())
         self.assertOpacity(root, '1')
         self.assertChannelBand(root, 'sld:RedChannel', '3')
         self.assertChannelBand(root, 'sld:GreenChannel', '1')
         self.assertChannelBand(root, 'sld:BlueChannel', '2')
+        # check ContrastEnhancement tags
+        self.assertContrastEnhancement(root, 'sld:RedChannel', 'StretchToMinimumMaximum', '51', '172')
+        self.assertContrastEnhancement(root, 'sld:GreenChannel', 'StretchToMinimumMaximum', '122', '130')
+        self.assertContrastEnhancement(root, 'sld:BlueChannel', 'StretchToMinimumMaximum', '133', '148')
         # check gamma properties from [-100:0] streched to [0:1]
         #  and (0:100] stretche dto (1:100]
         dom, root = self.rendererToSld(rasterRenderer, {'contrast': '-100'})
@@ -105,6 +117,7 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
         dom, root = self.rendererToSld(rasterRenderer, {'contrast': '-0.1'})
         self.assertGamma(root, '0.999')
 
+
     def assertGamma(self, root, expectedValue, index=0):
         enhancement = root.elementsByTagName('sld:ContrastEnhancement').item(index)
         gamma = enhancement.firstChildElement( 'sld:GammaValue' )
@@ -113,6 +126,26 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
     def assertOpacity(self, root, expectedValue, index=0):
         opacity = root.elementsByTagName('sld:Opacity').item(index)
         self.assertEqual(expectedValue, opacity.firstChild().nodeValue())
+
+    def assertContrastEnhancement(self, root, bandTag, expectedAlg, expectedMin, expectedMax, index=0):
+        channelSelection = root.elementsByTagName('sld:ChannelSelection').item(index)
+        self.assertIsNotNone(channelSelection)
+        band = channelSelection.firstChildElement( bandTag )
+        contrastEnhancementName = band.firstChildElement('sld:ContrastEnhancement')
+        self.assertEqual('Normalize', contrastEnhancementName.firstChild().nodeName())
+        normalize = contrastEnhancementName.firstChildElement( 'Normalize' )
+        vendorOptions = normalize.elementsByTagName('VendorOption')
+        for vendorOptionIndex in range(vendorOptions.count()):
+            vendorOption = vendorOptions.at(vendorOptionIndex)
+            self.assertEqual('VendorOption', vendorOption.nodeName())
+            if ( vendorOption.attributes().namedItem('name').nodeValue() == 'algorithm'):
+                self.assertEqual(expectedAlg, vendorOption.firstChild().nodeValue())
+            elif (vendorOption.attributes().namedItem('name').nodeValue() == 'minValue'):
+                self.assertEqual(expectedMin, vendorOption.firstChild().nodeValue())
+            elif (vendorOption.attributes().namedItem('name').nodeValue() == 'maxValue'):
+                self.assertEqual(expectedMax, vendorOption.firstChild().nodeValue())
+            else:
+                self.fail('Unrecognised vendorOption name {}'.format(vendorOption.attributes().namedItem('name').nodeValue()) )
 
     def assertChannelBand(self, root, bandTag, expectedValue, index=0):
         channelSelection = root.elementsByTagName('sld:ChannelSelection').item(index)
