@@ -41,6 +41,7 @@ from qgis.PyQt.QtGui import QColor, QFont
 from qgis.core import (
     QgsRasterLayer,
     QgsMultiBandColorRenderer,
+    QgsPalettedRasterRenderer,
     QgsContrastEnhancement,
     QgsRasterMinMaxOrigin,
     Qgis,
@@ -77,6 +78,35 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
         rasterFileInfo = QFileInfo(myPath)
         self.raster_layer = QgsRasterLayer(rasterFileInfo.filePath(),
                                            rasterFileInfo.completeBaseName())
+
+    def testPalettedRasterRenderer(self):
+        # create 10 color classes
+        #classesString = '122 0 0 0 255 122\n123 1 1 1 255 123\n124 2 2 2 255 124\n125 3 3 3 255 125\n126 4 4 4 255 126\n127 5 5 5 255 127\n128 6 6 6 255 128\n129 7 7 7 255 129\n130 8 8 8 255 130'
+        classesString = ''
+        for index in range(10):
+            classesString += '{0} {0} {0} {0} 255 {0}\n'.format(index)
+        classes = QgsPalettedRasterRenderer.classDataFromString( classesString )
+
+        rasterRenderer = QgsPalettedRasterRenderer(
+            self.raster_layer.dataProvider(), 3, classes)
+        self.raster_layer.setRenderer(rasterRenderer)
+
+        dom, root = self.rendererToSld(self.raster_layer.renderer())
+        self.assertOpacity(root, '1')
+        self.assertChannelBand(root, 'sld:GreyChannel', '3')
+        # check ColorMapEntry classes
+        colorMap = root.elementsByTagName('sld:ColorMap')
+        colorMap = colorMap.item(0).toElement()
+        self.assertFalse( colorMap.isNull() )
+        self.assertEqual( colorMap.attribute( 'type' ), 'values' )
+        colorMapEntries = colorMap.elementsByTagName('sld:ColorMapEntry')
+        self.assertEqual(colorMapEntries.count(), 10)
+        for index in range(colorMapEntries.count()):
+            colorMapEntry = colorMapEntries.at(index).toElement()
+            self.assertEqual( colorMapEntry.attribute( 'quantity' ), '{}'.format(index) )
+            self.assertEqual( colorMapEntry.attribute( 'label' ), '{}'.format(index) )
+            self.assertEqual( colorMapEntry.attribute( 'opacity' ), '1' )
+            self.assertEqual( colorMapEntry.attribute( 'color' ), '#{0:02d}{0:02d}{0:02d}'.format(index) )
 
     def testMultiBandColorRenderer(self):
         rasterRenderer = QgsMultiBandColorRenderer(
