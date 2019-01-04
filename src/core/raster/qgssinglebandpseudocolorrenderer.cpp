@@ -326,3 +326,54 @@ QList<int> QgsSingleBandPseudoColorRenderer::usesBands() const
   }
   return bandList;
 }
+
+void QgsSingleBandPseudoColorRenderer::toSld( QDomDocument &doc, QDomElement &element, const QgsStringMap &props ) const
+{
+  QgsStringMap newProps = props;
+
+  // create base structure
+  QgsRasterRenderer::toSld( doc, element, props );
+
+  // look for RasterSymbolizer tag
+  QDomNodeList elements = element.elementsByTagName( QStringLiteral( "sld:RasterSymbolizer" ) );
+  if ( elements.size() == 0)
+    return;
+
+  // there SHOULD be only one
+  QDomElement rasterSymbolizerElem = elements.at(0).toElement();
+
+  // add Channel Selection tags
+  QDomElement channelSelectionElem = doc.createElement( QStringLiteral( "sld:ChannelSelection" ) );
+  rasterSymbolizerElem.appendChild( channelSelectionElem );
+
+  // for the mapped band
+  QDomElement channelElem = doc.createElement( QStringLiteral( "sld:GreyChannel" ) );
+  channelSelectionElem.appendChild( channelElem );
+
+  // set band
+  QDomElement sourceChannelNameElem = doc.createElement( QStringLiteral( "sld:SourceChannelName" ) );
+  sourceChannelNameElem.appendChild( doc.createTextNode( QString::number( band() ) ) );
+  channelElem.appendChild( sourceChannelNameElem );
+
+  // add ColorMap tag
+  QDomElement colorMapElem = doc.createElement( QStringLiteral( "sld:ColorMap" ) );
+  colorMapElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "intervals" ) );
+  rasterSymbolizerElem.appendChild( colorMapElem );
+
+  // for each color set a ColorMapEntry tag nested into "sld:ColorMap" tag
+  // e.g. <ColorMapEntry color="#EEBE2F" quantity="-300" label="label" opacity="0"/>
+  QList< QPair< QString, QColor > > classes;
+  legendSymbologyItems( classes );
+  QList< QPair< QString, QColor > >::const_iterator classDataIt = classes.constBegin();
+  for (; classDataIt != classes.constEnd();  ++classDataIt )
+  {
+    QDomElement colorMapEntryElem = doc.createElement( QStringLiteral( "sld:ColorMapEntry" ) );
+    colorMapElem.appendChild( colorMapEntryElem );
+
+    // set colorMapEntryElem attributes
+    colorMapEntryElem.setAttribute( QStringLiteral( "color" ), classDataIt->second.name() );
+    colorMapEntryElem.setAttribute( QStringLiteral( "quantity" ), classDataIt->first );
+    colorMapEntryElem.setAttribute( QStringLiteral( "label" ), classDataIt->first );
+    colorMapEntryElem.setAttribute( QStringLiteral( "opacity" ), QString::number( classDataIt->second.alphaF() ) );
+  }
+}
