@@ -83,7 +83,7 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
         self.raster_layer = QgsRasterLayer(rasterFileInfo.filePath(),
                                            rasterFileInfo.completeBaseName())
 
-    def testSingleBandPseudoColorRenderer(self):
+    def testSingleBandPseudoColorRenderer_Interpolated(self):
         # get min and max of the band to renderer
         bandNo = 3;
         stats = self.raster_layer.dataProvider().bandStatistics( bandNo, QgsRasterBandStats.Min | QgsRasterBandStats.Max )
@@ -112,7 +112,85 @@ class TestQgsRasterRendererCreateSld(unittest.TestCase):
         colorMap = root.elementsByTagName('sld:ColorMap')
         colorMap = colorMap.item(0).toElement()
         self.assertFalse( colorMap.isNull() )
+        self.assertEqual( colorMap.attribute( 'type' ), 'ramp' )
+        colorMapEntries = colorMap.elementsByTagName('sld:ColorMapEntry')
+        self.assertEqual(colorMapEntries.count(), 10)
+        for index in range(colorMapEntries.count()):
+            colorMapEntry = colorMapEntries.at(index).toElement()
+            self.assertEqual( colorMapEntry.attribute( 'quantity' ), '{}'.format(index) )
+            self.assertEqual( colorMapEntry.attribute( 'label' ), '{}'.format(index) )
+            self.assertEqual( colorMapEntry.attribute( 'opacity' ), '1' )
+            self.assertEqual( colorMapEntry.attribute( 'color' ), '#{0:02d}{0:02d}{0:02d}'.format(index) )
+
+    def testSingleBandPseudoColorRenderer_Discrete(self):
+        # get min and max of the band to renderer
+        bandNo = 3;
+        stats = self.raster_layer.dataProvider().bandStatistics( bandNo, QgsRasterBandStats.Min | QgsRasterBandStats.Max )
+        minValue = stats.minimumValue
+        maxValue = stats.maximumValue
+        # create shader for the renderer
+        shader = QgsRasterShader( minValue, maxValue )
+        colorRampShaderFcn = QgsColorRampShader(minValue, maxValue);
+        colorRampShaderFcn.setColorRampType( QgsColorRampShader.Discrete );
+        colorRampShaderFcn.setClassificationMode( QgsColorRampShader.Continuous );
+        colorRampShaderFcn.setClip( True );
+        items=[]
+        for index in range(10):
+            items.append( QgsColorRampShader.ColorRampItem(index, QColor('#{0:02d}{0:02d}{0:02d}'.format(index)), "{}".format(index)))
+        colorRampShaderFcn.setColorRampItemList(items)
+        shader.setRasterShaderFunction(colorRampShaderFcn)
+        # create instance to test
+        rasterRenderer = QgsSingleBandPseudoColorRenderer( self.raster_layer.dataProvider(), bandNo, shader )
+        self.raster_layer.setRenderer(rasterRenderer)
+
+        # do test
+        dom, root = self.rendererToSld(self.raster_layer.renderer())
+        self.assertOpacity(root, '1')
+        self.assertChannelBand(root, 'sld:GreyChannel', '{}'.format(bandNo))
+        # check ColorMapEntry classes
+        colorMap = root.elementsByTagName('sld:ColorMap')
+        colorMap = colorMap.item(0).toElement()
+        self.assertFalse( colorMap.isNull() )
         self.assertEqual( colorMap.attribute( 'type' ), 'intervals' )
+        colorMapEntries = colorMap.elementsByTagName('sld:ColorMapEntry')
+        self.assertEqual(colorMapEntries.count(), 10)
+        for index in range(colorMapEntries.count()):
+            colorMapEntry = colorMapEntries.at(index).toElement()
+            self.assertEqual( colorMapEntry.attribute( 'quantity' ), '{}'.format(index) )
+            self.assertEqual( colorMapEntry.attribute( 'label' ), '{}'.format(index) )
+            self.assertEqual( colorMapEntry.attribute( 'opacity' ), '1' )
+            self.assertEqual( colorMapEntry.attribute( 'color' ), '#{0:02d}{0:02d}{0:02d}'.format(index) )
+
+    def testSingleBandPseudoColorRenderer_Exact(self):
+        # get min and max of the band to renderer
+        bandNo = 3;
+        stats = self.raster_layer.dataProvider().bandStatistics( bandNo, QgsRasterBandStats.Min | QgsRasterBandStats.Max )
+        minValue = stats.minimumValue
+        maxValue = stats.maximumValue
+        # create shader for the renderer
+        shader = QgsRasterShader( minValue, maxValue )
+        colorRampShaderFcn = QgsColorRampShader(minValue, maxValue);
+        colorRampShaderFcn.setColorRampType( QgsColorRampShader.Exact );
+        colorRampShaderFcn.setClassificationMode( QgsColorRampShader.Continuous );
+        colorRampShaderFcn.setClip( True );
+        items=[]
+        for index in range(10):
+            items.append( QgsColorRampShader.ColorRampItem(index, QColor('#{0:02d}{0:02d}{0:02d}'.format(index)), "{}".format(index)))
+        colorRampShaderFcn.setColorRampItemList(items)
+        shader.setRasterShaderFunction(colorRampShaderFcn)
+        # create instance to test
+        rasterRenderer = QgsSingleBandPseudoColorRenderer( self.raster_layer.dataProvider(), bandNo, shader )
+        self.raster_layer.setRenderer(rasterRenderer)
+
+        # do test
+        dom, root = self.rendererToSld(self.raster_layer.renderer())
+        self.assertOpacity(root, '1')
+        self.assertChannelBand(root, 'sld:GreyChannel', '{}'.format(bandNo))
+        # check ColorMapEntry classes
+        colorMap = root.elementsByTagName('sld:ColorMap')
+        colorMap = colorMap.item(0).toElement()
+        self.assertFalse( colorMap.isNull() )
+        self.assertEqual( colorMap.attribute( 'type' ), 'values' )
         colorMapEntries = colorMap.elementsByTagName('sld:ColorMapEntry')
         self.assertEqual(colorMapEntries.count(), 10)
         for index in range(colorMapEntries.count()):
