@@ -420,7 +420,11 @@ QList<QgsModelGraphicsScene::LinkSource> QgsModelGraphicsScene::linkSourcesForPa
             if ( messageBar() )
               showWarning( const_cast<QString &>( short_message ), const_cast<QString &>( title ), const_cast<QString &>( long_message ) );
             else
+<<<<<<< HEAD
               QgsMessageLog::logMessage( long_message, "QgsModelGraphicsScene", Qgis::Warning, true );
+=======
+              QgsApplication::instance()->messageLog()->logMessage( long_message, "QgsModelGraphicsScene", Qgis::Warning, true );
+>>>>>>> Added sanity check of links betweet graphicitems showing error in dialog. Fixes #40724 #39260
             break;
           }
 

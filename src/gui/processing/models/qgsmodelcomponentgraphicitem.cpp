@@ -992,8 +992,13 @@ QString QgsModelChildAlgorithmGraphicItem::linkPointText( Qt::Edge edge, int ind
         if ( index >= child->algorithm()->outputDefinitions().length() )
         {
           // something goes wrong and tried to link to an not existing output
+<<<<<<< HEAD
           QgsMessageLog::logMessage(
             tr( "Cannot link output for child: %1" ).arg( child->algorithm()->name() ),
+=======
+          QgsApplication::instance()->messageLog()->logMessage(
+            this->tr( "Cannot link output for child: %1" ).arg( child->algorithm()->name() ),
+>>>>>>> Added sanity check of links betweet graphicitems showing error in dialog. Fixes #40724 #39260
             "QgsModelChildAlgorithmGraphicItem", Qgis::Warning, true );
           return QString();
         }
@@ -1018,8 +1023,13 @@ QString QgsModelChildAlgorithmGraphicItem::linkPointText( Qt::Edge edge, int ind
         if ( index >= params.length() )
         {
           // something goes wrong and tried to link to an not existing source parameter
+<<<<<<< HEAD
           QgsMessageLog::logMessage(
             tr( "Cannot link source for child: %1" ).arg( child->algorithm()->name() ),
+=======
+          QgsApplication::instance()->messageLog()->logMessage(
+            this->tr( "Cannot link source for child: %1" ).arg( child->algorithm()->name() ),
+>>>>>>> Added sanity check of links betweet graphicitems showing error in dialog. Fixes #40724 #39260
             "QgsModelChildAlgorithmGraphicItem", Qgis::Warning, true );
           return QString();
         }
